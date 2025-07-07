@@ -1,0 +1,12 @@
+crewai
+langchain-community
+duckduckgo-search
+python-dotenv
+requests
+gspread
+google-auth-oauthlib
+pydantic
+langchain-groq
+google-api-python-client
+langchain
+lxml 

@@ -1,0 +1,22 @@
+services:
+  - type: cron
+    name: ai-news-summary
+    schedule: "0 9 * * *" # Every day at 9:00 AM UTC
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python ai-news-summary.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SLACK_WEBHOOK_URL
+        sync: false
+      - key: GCP_CREDENTIALS
+        sync: false
+      - key: RENDER_API_KEY
+        sync: false
+    
+    # Create the secret file from the environment variable
+    # In the Render dashboard, create an environment variable `GCP_CREDENTIALS`
+    # and paste the entire content of your `ai-news-sheet-ea23a0541b63.json` file.
+    preDeployCommand: "echo $GCP_CREDENTIALS > ai-news-sheet-ea23a0541b63.json" 
