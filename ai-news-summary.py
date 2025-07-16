@@ -21,14 +21,7 @@ dotenv.load_dotenv()
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
 # Google Sheet URL
-SHEET_URL = "https://docs.google.com/spreadsheets/d/17myuEh8gV6K7mZzpzignEWRiFL5JqiY1kGOon_emg8g/edit#gid=0"
-
-# ------------------ 🔐 Decode Google Credentials from base64 ------------------
-
-GOOGLE_CREDENTIALS_BASE64 = os.getenv("GOOGLE_CREDENTIALS_BASE64")
-decoded_credentials = base64.b64decode(GOOGLE_CREDENTIALS_BASE64).decode("utf-8")
-with open("temp_google_creds.json", "w") as f:
-    f.write(decoded_credentials)
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1YEiQga4bLDakihGTAp3fGoA8E4OWgvYJ_Eas3SMYEZs/edit?gid=0#gid=0"
 
 # ------------------------- Pydantic Models for Structured Output -------------------------
 
@@ -109,7 +102,7 @@ analysis_task = Task(
     2.  The significance of the news (e.g., major product launch, breakthrough research).
     3.  Novelty (is this new information or a rehash of old news?).
     
-    Your final output should be the same list of news items provided as input, but with a 'rating' field (an integer from 1 to 10) added to each item.""",
+    Your final output should be the same list of news items, but with the rating included for each.""",
     expected_output="""A JSON object adhering to the NewsReport schema.
     This object must contain the same list of news items provided as input, but with a 'rating' field (an integer from 1 to 10) added to each item.""",
     agent=analyst,
@@ -131,7 +124,7 @@ def get_existing_urls_from_sheet():
     try:
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
         print("Loading credentials...")
-        creds = Credentials.from_service_account_file("temp_google_creds.json", scopes=scopes)
+        creds = Credentials.from_service_account_file("ai-news-sheet-ea23a0541b63.json", scopes=scopes)
         print("Authorizing client...")
         client = gspread.authorize(creds)
 
@@ -139,6 +132,7 @@ def get_existing_urls_from_sheet():
         sheet = client.open_by_url(SHEET_URL)
         worksheet = sheet.sheet1
         
+        # URLs are in the 4th column
         print("Fetching URL column...")
         urls = set(worksheet.col_values(4))
         print(f"Found {len(urls)} existing URLs in the sheet.")
@@ -158,7 +152,7 @@ def append_to_google_sheet(data_rows):
 
     try:
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_file("temp_google_creds.json", scopes=scopes)
+        creds = Credentials.from_service_account_file("ai-news-sheet-ea23a0541b63.json", scopes=scopes)
         client = gspread.authorize(creds)
 
         sheet = client.open_by_url(SHEET_URL)
@@ -166,7 +160,7 @@ def append_to_google_sheet(data_rows):
 
         print(f"Appending {len(data_rows)} rows to the worksheet...")
         for row in data_rows:
-            print(f"  > Appending row: {row[:2]}...")  # Show title and date for log
+            print(f"  > Appending row: {row[:2]}...") # Log first two elements for brevity
             worksheet.append_row(row)
 
         print("Successfully uploaded to Google Sheets.")
@@ -181,25 +175,23 @@ if __name__ == "__main__":
 
     if result and result.news_items:
         print(f"Successfully found and analyzed {len(result.news_items)} news items.")
+
         existing_urls = get_existing_urls_from_sheet()
+        
         new_items = [item for item in result.news_items if item.url not in existing_urls]
 
         if not new_items:
             print("No new news items to add. All fetched articles are already in the sheet.")
         else:
             print(f"Found {len(new_items)} new news items to be added.")
+            # Google Sheets
             sheet_rows = []
             for item in new_items:
-                sheet_rows.append([
-                    item.publication_date.strftime('%Y-%m-%d'),
-                    item.title,
-                    item.summary,
-                    item.url,
-                    item.rating
-                ])
+                sheet_rows.append([item.publication_date.strftime('%Y-%m-%d'), item.title, item.summary, item.url, item.rating])
             
             append_to_google_sheet(sheet_rows)
 
+            # Slack
             slack_message = "*AI News Summary*\n\n"
             for item in new_items:
                 slack_message += f"*Title:* {item.title}\n"
@@ -216,7 +208,4 @@ if __name__ == "__main__":
         print("No news items found by the crew.")
         if crew_output:
             print("Raw output from crew:", crew_output.raw)
-
-    # ------------------------- Delete temp creds file -------------------------
-    if os.path.exists("temp_google_creds.json"):
-        os.remove("temp_google_creds.json")
+            
