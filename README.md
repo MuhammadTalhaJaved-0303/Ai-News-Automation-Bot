@@ -1,7 +1,7 @@
 
 # 📰 Ai-News-Automation-Bot
 
-A Python-based automation tool that fetches the latest AI news twice daily, summarizes it using the Perplexity API, rates it for small business relevance, and stores the results in Google Sheets.
+A Python-based automation tool that fetches the latest AI news twice daily, summarizes it using the Open Ai API, rates it for small business relevance, and stores the results in Google Sheets.
 
 ---
 
